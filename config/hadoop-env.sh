@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,83 +17,110 @@
 
 # Set Hadoop-specific environment variables here.
 
-# The only required environment variable is JAVA_HOME.  All others are
-# optional.  When running a distributed configuration it is best to
-# set JAVA_HOME in this file, so that it is correctly defined on
-# remote nodes.
+##
+## THIS FILE ACTS AS THE MASTER FILE FOR ALL HADOOP PROJECTS.
+## SETTINGS HERE WILL BE READ BY ALL HADOOP COMMANDS.  THEREFORE,
+## ONE CAN USE THIS FILE TO SET YARN, HDFS, AND MAPREDUCE
+## CONFIGURATION OPTIONS INSTEAD OF xxx-env.sh.
+##
+## Precedence rules:
+##
+## {yarn-env.sh|hdfs-env.sh} > hadoop-env.sh > hard-coded defaults
+##
+## {YARN_xyz|HDFS_xyz} > HADOOP_xyz > hard-coded defaults
+##
 
-# The java implementation to use.
-export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
-
-# The jsvc implementation to use. Jsvc is required to run secure datanodes
-# that bind to privileged ports to provide authentication of data transfer
-# protocol.  Jsvc is not required if SASL is configured for authentication of
-# data transfer protocol using non-privileged ports.
-#export JSVC_HOME=${JSVC_HOME}
-
-export HADOOP_CONF_DIR=${HADOOP_CONF_DIR:-"/etc/hadoop"}
-
-# Extra Java CLASSPATH elements.  Automatically insert capacity-scheduler.
-for f in $HADOOP_HOME/contrib/capacity-scheduler/*.jar; do
-  if [ "$HADOOP_CLASSPATH" ]; then
-    export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$f
-  else
-    export HADOOP_CLASSPATH=$f
-  fi
-done
-
-# The maximum amount of heap to use, in MB. Default is 1000.
-#export HADOOP_HEAPSIZE=
-#export HADOOP_NAMENODE_INIT_HEAPSIZE=""
-
-# Extra Java runtime options.  Empty by default.
-export HADOOP_OPTS="$HADOOP_OPTS -Djava.net.preferIPv4Stack=true"
-
-# Command specific options appended to HADOOP_OPTS when specified
-export HADOOP_NAMENODE_OPTS="-Dhadoop.security.logger=${HADOOP_SECURITY_LOGGER:-INFO,RFAS} -Dhdfs.audit.logger=${HDFS_AUDIT_LOGGER:-INFO,NullAppender} $HADOOP_NAMENODE_OPTS"
-export HADOOP_DATANODE_OPTS="-Dhadoop.security.logger=ERROR,RFAS $HADOOP_DATANODE_OPTS"
-
-export HADOOP_SECONDARYNAMENODE_OPTS="-Dhadoop.security.logger=${HADOOP_SECURITY_LOGGER:-INFO,RFAS} -Dhdfs.audit.logger=${HDFS_AUDIT_LOGGER:-INFO,NullAppender} $HADOOP_SECONDARYNAMENODE_OPTS"
-
-export HADOOP_NFS3_OPTS="$HADOOP_NFS3_OPTS"
-export HADOOP_PORTMAP_OPTS="-Xmx512m $HADOOP_PORTMAP_OPTS"
-
-# The following applies to multiple commands (fs, dfs, fsck, distcp etc)
-export HADOOP_CLIENT_OPTS="-Xmx512m $HADOOP_CLIENT_OPTS"
-#HADOOP_JAVA_PLATFORM_OPTS="-XX:-UsePerfData $HADOOP_JAVA_PLATFORM_OPTS"
-
-# On secure datanodes, user to run the datanode as after dropping privileges.
-# This **MUST** be uncommented to enable secure HDFS if using privileged ports
-# to provide authentication of data transfer protocol.  This **MUST NOT** be
-# defined if SASL is configured for authentication of data transfer protocol
-# using non-privileged ports.
-export HADOOP_SECURE_DN_USER=${HADOOP_SECURE_DN_USER}
-
-# Where log files are stored.  $HADOOP_HOME/logs by default.
-#export HADOOP_LOG_DIR=${HADOOP_LOG_DIR}/$USER
-
-# Where log files are stored in the secure data environment.
-export HADOOP_SECURE_DN_LOG_DIR=${HADOOP_LOG_DIR}/${HADOOP_HDFS_USER}
-
-###
-# HDFS Mover specific parameters
-###
-# Specify the JVM options to be used when starting the HDFS Mover.
-# These options will be appended to the options specified as HADOOP_OPTS
-# and therefore may override any similar flags set in HADOOP_OPTS
+# Many of the options here are built from the perspective that users
+# may want to provide OVERWRITING values on the command line.
+# For example:
 #
-# export HADOOP_MOVER_OPTS=""
+#  JAVA_HOME=/usr/java/testing hdfs dfs -ls
+#
+# Therefore, the vast majority (BUT NOT ALL!) of these defaults
+# are configured for substitution and not append.  If append
+# is preferable, modify this file accordingly.
 
 ###
-# Advanced Users Only!
+# Generic settings for HADOOP
 ###
 
-# The directory where pid files are stored. /tmp by default.
-# NOTE: this should be set to a directory that can only be written to by 
-#       the user that will run the hadoop daemons.  Otherwise there is the
-#       potential for a symlink attack.
-export HADOOP_PID_DIR=${HADOOP_PID_DIR}
-export HADOOP_SECURE_DN_PID_DIR=${HADOOP_PID_DIR}
+# Technically, the only required environment variable is JAVA_HOME.
+# All others are optional.  However, the defaults are probably not
+# preferred.  Many sites configure these options outside of Hadoop,
+# such as in /etc/profile.d
 
-# A string representing this instance of hadoop. $USER by default.
-export HADOOP_IDENT_STRING=$USER
+# The java implementation to use. By default, this environment
+# variable is REQUIRED on ALL platforms except OS X!
+export JAVA_HOME="/usr/lib/jvm/java-8-openjdk-arm64"
+
+# Location of Hadoop.  By default, Hadoop will attempt to determine
+# this location based upon its execution path.
+# export HADOOP_HOME=
+
+# Location of Hadoop's configuration information.  i.e., where this
+# file is living. If this is not defined, Hadoop will attempt to
+# locate it based upon its execution path.
+#
+# NOTE: It is recommend that this variable not be set here but in
+# /etc/profile.d or equivalent.  Some options (such as
+# --config) may react strangely otherwise.
+#
+export HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
+
+# The maximum amount of heap to use (Java -Xmx).  If no unit
+# is provided, it will be converted to MB.  Daemons will
+# prefer any Xmx setting in their respective _OPT variable.
+# There is no default; the JVM will autoscale based upon machine
+# memory size.
+# export HADOOP_HEAPSIZE_MAX=
+
+# The minimum amount of heap to use (Java -Xms).  If no unit
+# is provided, it will be converted to MB.  Daemons will
+# prefer any Xms setting in their respective _OPT variable.
+# There is no default; the JVM will autoscale based upon machine
+# memory size.
+# export HADOOP_HEAPSIZE_MIN=
+
+# Enable extra debugging of Hadoop's JAAS binding, used to set up
+# Kerberos security.
+# export HADOOP_JAAS_DEBUG=true
+
+# Extra Java runtime options for all Hadoop commands. We don't support
+# IPv6 yet/still, so by default the preference is set to IPv4.
+# export HADOOP_OPTS="-Djava.net.preferIPv4Stack=true"
+# For Kerberos debugging, an extended option set logs more information
+# export HADOOP_OPTS="-Djava.net.preferIPv4Stack=true -Dsun.security.krb5.debug=true -Dsun.security.spnego.debug"
+
+# Some parts of the shell code may do special things dependent upon
+# the operating system.  We have to set this here. See the next
+# section as to why....
+export HADOOP_OS_TYPE=${HADOOP_OS_TYPE:-$(uname -s)}
+
+###
+# Options for remote shell connectivity
+###
+
+# There are some optional components of hadoop that allow for
+# command and control of remote hosts.  For example,
+# start-dfs.sh will attempt to bring up all NNs, DNS, etc.
+
+# Options to pass to SSH when one of the "log into a host and
+# start/stop daemons" scripts is executed
+export HADOOP_SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10s"
+
+# The built-in ssh handler will limit itself to 10 simultaneous connections.
+# For pdsh users, this sets the fanout size ( -f )
+# Change this to increase/decrease as necessary.
+# export HADOOP_SSH_PARALLEL=10
+
+# Filename which contains all of the hosts for any remote execution
+# helper scripts # such as workers.sh, start-dfs.sh, etc.
+
+
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
+
+export HDFS_NAMENODE_USER=root
+export HDFS_DATANODE_USER=root
+export HDFS_SECONDARYNAMENODE_USER=root
+export YARN_RESOURCEMANAGER_USER=root
+export YARN_NODEMANAGER_USER=root
